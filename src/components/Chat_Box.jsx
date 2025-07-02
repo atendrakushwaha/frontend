@@ -13,7 +13,7 @@ const socket = io('http://localhost:3000');
 const Chat_Box = ({ user: receiver }) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const { messages, currentReceiverId } = useSelector((state) => state.chat);
+  const { messages } = useSelector((state) => state.chat);
   const [message, setMessage] = useState('');
   const chatRef = useRef();
 
@@ -23,13 +23,14 @@ const Chat_Box = ({ user: receiver }) => {
     dispatch(fetchMessages(receiver._id));
     dispatch(setCurrentReceiver(receiver._id));
     socket.emit('register', user._id);
-  }, [receiver, dispatch, user._id]);
+  }, [receiver._id, dispatch, user._id]);
 
   useEffect(() => {
-    socket.on('private message', (data) => {
+    const handlePrivateMessage = (data) => {
       dispatch(addSocketMessage(data));
-    });
-    return () => socket.off('private message');
+    };
+    socket.on('private message', handlePrivateMessage);
+    return () => socket.off('private message', handlePrivateMessage);
   }, [dispatch]);
 
   const handleSend = () => {
@@ -39,9 +40,7 @@ const Chat_Box = ({ user: receiver }) => {
       .unwrap()
       .then((res) => {
         const msg = res.message;
-        socket.emit('private message', {
-          ...msg, // includes _id, senderId, receiverId, message, createdAt
-        });
+        socket.emit('private message', msg);
       });
 
     setMessage('');
@@ -57,13 +56,11 @@ const Chat_Box = ({ user: receiver }) => {
         Chat with {receiver.username}
       </div>
       <div ref={chatRef} className="flex-1 p-4 overflow-y-auto space-y-2">
-        {userMessages.map((m, idx) => (
-          <div key={m._id || idx} className={m.senderId === user._id ? 'text-right' : 'text-left'}>
+        {userMessages.map((m) => (
+          <div key={m._id} className={m.senderId === user._id ? 'text-right' : 'text-left'}>
             <div
-              className={`${
-                m.senderId === user._id
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-200 text-gray-800'
+              className={`$ {
+                m.senderId === user._id ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'
               } inline-block px-4 py-2 rounded-2xl text-sm max-w-xs break-words`}
             >
               {m.message}
